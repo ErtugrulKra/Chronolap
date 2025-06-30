@@ -1,0 +1,118 @@
+﻿using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+
+namespace Chronolap
+{
+    public class ChronolapTimer
+    {
+        private readonly Stopwatch _stopwatch;
+        private readonly List<LapInfo> _laps;
+        private readonly ILogger _logger;
+        private TimeSpan _lastLapTimestamp;
+        public TimeSpan Elapsed => _stopwatch.Elapsed;
+        public IReadOnlyList<LapInfo> Laps => _laps.AsReadOnly();
+        public bool IsRunning => _stopwatch.IsRunning;
+        public TimeSpan TotalLapTime
+        {
+            get
+            {
+                TimeSpan total = TimeSpan.Zero;
+                foreach (var lap in _laps)
+                {
+                    total += lap.Duration;
+                }
+                return total;
+            }
+        }
+
+        public ChronolapTimer(ILogger logger) : this()
+        {
+            _logger = logger;
+        }
+
+        public ChronolapTimer()
+        {
+            _stopwatch = new Stopwatch();
+            _laps = new List<LapInfo>();
+            _lastLapTimestamp = TimeSpan.Zero;
+        }
+
+        public void Start() => _stopwatch.Start();
+
+        public void Stop() => _stopwatch.Stop();
+
+        public void Reset()
+        {
+            _stopwatch.Reset();
+            _laps.Clear();
+            _lastLapTimestamp = TimeSpan.Zero;
+        }
+
+        public void Lap(string name)
+        {
+            var now = _stopwatch.Elapsed;
+            var lapDuration = now - _lastLapTimestamp;
+
+            var lap = new LapInfo
+            {
+                Name = name ?? $"Lap {Laps.Count + 1}",
+                Duration = lapDuration,
+                Timestamp = now
+            };
+
+            _laps.Add(lap);
+            _lastLapTimestamp = now;
+
+            _logger?.LogInformation("Lap recorded: {LapName}, Duration: {Duration} ms", lap.Name, lap.Duration.TotalMilliseconds);
+        }
+
+        public void MeasureExecutionTime(Action action, string lapName)
+        {
+            var before = _stopwatch.Elapsed;
+
+            action();
+
+            var after = _stopwatch.Elapsed;
+            var lapDuration = after - before;
+
+            _laps.Add(new LapInfo
+            {
+                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
+                Duration = lapDuration,
+                Timestamp = after
+            });
+
+            _lastLapTimestamp = after;
+        }
+
+        public void MeasureExecutionTime(Action action)
+        {
+            MeasureExecutionTime(action, action.Method.Name);
+        }
+
+        public async Task MeasureExecutionTimeAsync(Func<Task> asyncAction, string lapName)
+        {
+            var before = _stopwatch.Elapsed;
+
+            await asyncAction();
+
+            var after = _stopwatch.Elapsed;
+            var lapDuration = after - before;
+
+            _laps.Add(new LapInfo
+            {
+                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
+                Duration = lapDuration,
+                Timestamp = after
+            });
+
+            _lastLapTimestamp = after;
+        }
+
+        public async Task MeasureExecutionTimeAsync(Func<Task> asyncAction)
+        {
+            await MeasureExecutionTimeAsync(asyncAction, asyncAction.Method.Name);
+        }
+
+    }
+}
