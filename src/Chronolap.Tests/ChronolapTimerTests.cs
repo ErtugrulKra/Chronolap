@@ -131,6 +131,7 @@ namespace Chronolap.Tests
             Assert.True(timer.Elapsed > pausedTime);
         }
 
+        
     }
 
 }
