@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>1.0.0</Version>
+    <Authors>Ertugrul Kara</Authors>
+    <Company>Ertugrul Kara</Company>
+    <Description>Advanced Stopwatch with Lap Tracking support for .NET developers With OpenTelemetry Extensions</Description>
+    <PackageId>Chronolap.OpenTelemetry</PackageId>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/ErtugrulKra/Chronolap</RepositoryUrl>
+
+
+    <title>Chronolap</title>
+    <projectUrl>https://github.com/ErtugrulKra/Chronolap</projectUrl>
+    <icon>logo.png</icon>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+
+    <copyright>Copyright (c) Ertugrul Kara </copyright>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronolap\Chronolap.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap", "Chronolap\Chro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap.Tests", "Chronolap.Tests\Chronolap.Tests.csproj", "{F3F06F0D-B43A-4267-854C-98611795B256}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap.OpenTelemetry", "Chronolap.OpenTelemetry\Chronolap.OpenTelemetry.csproj", "{AB8CE239-6A6F-424D-99D3-440FF1EED138}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{F3F06F0D-B43A-4267-854C-98611795B256}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3F06F0D-B43A-4267-854C-98611795B256}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3F06F0D-B43A-4267-854C-98611795B256}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AB8CE239-6A6F-424D-99D3-440FF1EED138}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB8CE239-6A6F-424D-99D3-440FF1EED138}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB8CE239-6A6F-424D-99D3-440FF1EED138}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB8CE239-6A6F-424D-99D3-440FF1EED138}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
