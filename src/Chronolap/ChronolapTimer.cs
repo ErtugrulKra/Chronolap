@@ -9,6 +9,9 @@ namespace Chronolap
         private readonly List<LapInfo> _laps;
         private readonly ILogger _logger;
         private TimeSpan _lastLapTimestamp;
+        private bool _isPaused;
+
+        public bool IsPaused => _isPaused;
         public TimeSpan Elapsed => _stopwatch.Elapsed;
         public IReadOnlyList<LapInfo> Laps => _laps.AsReadOnly();
         public bool IsRunning => _stopwatch.IsRunning;
@@ -46,6 +49,24 @@ namespace Chronolap
             _stopwatch.Reset();
             _laps.Clear();
             _lastLapTimestamp = TimeSpan.Zero;
+        }
+
+        public void Pause()
+        {
+            if (_stopwatch.IsRunning)
+            {
+                _stopwatch.Stop();
+                _isPaused = true;
+            }
+        }
+
+        public void Resume()
+        {
+            if (_isPaused)
+            {
+                _stopwatch.Start();
+                _isPaused = false;
+            }
         }
 
         public void Lap(string name)

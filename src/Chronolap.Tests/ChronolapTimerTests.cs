@@ -101,6 +101,36 @@ namespace Chronolap.Tests
                     It.IsAny<Func<It.IsAnyType, Exception, string>>()),
                 Times.Once);
         }
+
+        [Fact]
+        public void Pause_StopsStopwatch()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+            Thread.Sleep(30);
+            timer.Pause();
+
+            var pausedTime = timer.Elapsed;
+            Thread.Sleep(30);
+            Assert.Equal(pausedTime, timer.Elapsed);
+        }
+
+        [Fact]
+        public void Resume_ContinuesStopwatch()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+            Thread.Sleep(30);
+            timer.Pause();
+            var pausedTime = timer.Elapsed;
+
+            Thread.Sleep(30);
+            timer.Resume();
+            Thread.Sleep(30);
+
+            Assert.True(timer.Elapsed > pausedTime);
+        }
+
     }
 
 }
