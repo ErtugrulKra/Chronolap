@@ -1,4 +1,6 @@
-﻿namespace Chronolap
+﻿using System;
+
+namespace Chronolap
 {
     public class LapInfo
     {

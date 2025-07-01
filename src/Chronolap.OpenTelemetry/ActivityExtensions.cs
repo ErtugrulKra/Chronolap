@@ -1,5 +1,6 @@
 ﻿using Chronolap;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Choronolap.OpenTelemetry
 {
