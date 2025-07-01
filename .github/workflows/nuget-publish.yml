@@ -25,10 +25,5 @@ jobs:
       - name: Pack NuGet package
         run: dotnet pack ./src/Chronolap.sln --configuration Release --no-build -o ./nupkg
 
-      - name: Publish to NuGet.org
-        uses: NuGet/setup-nuget@v1
-        with:
-          nuget-api-key: ${{ secrets.NUGET_API_KEY }}
-
       - name: Push package
         run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
