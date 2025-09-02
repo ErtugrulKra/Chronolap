@@ -100,6 +100,46 @@ using (var activity = activitySource.StartActivity("ExampleOperation"))
 Contributions are welcome! Please open issues or pull requests.
 
 
+## 📢 What's New (v1.2.0)
+# 🆕 Lap Logger Extension
+
+ILogger Integration: Chronolap can now log lap results directly through ILogger.
+
+Batch Logging: All laps can be logged at once in a clean format.
+
+Customizable Formatting: Use the default format or provide your own custom formatter.
+
+Log Level Support: Log laps at Debug, Information, Warning, or any other log level.
+
+### Example
+
+```csharp
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+var logger = loggerFactory.CreateLogger<Program>();
+
+var chrono = new ChronolapTimer();
+chrono.Start();
+
+Thread.Sleep(500);
+chrono.Lap();
+
+Thread.Sleep(700);
+chrono.Lap();
+
+chrono.Stop();
+
+logger.LogLaps(chrono, LogLevel.Information);
+```
+
+Output will looks like this;
+
+```bash
+info: Program[0]
+      ⏱ Chronolap Results:
+      Lap 1: 00:00:00.5000000
+      Lap 2: 00:00:01.2000000
+```
+
 ## Support
 
 If you find this project useful, consider supporting me:

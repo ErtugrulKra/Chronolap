@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    
+	<Nullable>enable</Nullable>  
+    <Version>1.1.0</Version>
+    <Authors>Ertugrul Kara</Authors>
+    <Company>Ertugrul Kara</Company>
+    <Description>Advanced Stopwatch with Lap Tracking support for .NET developers</Description>
+    <PackageId>Chronolap.Extensions.Logging</PackageId>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/ErtugrulKra/Chronolap</RepositoryUrl>
+    <LangVersion>10.0</LangVersion>
+    
+    <title>Chronolap</title>
+    <projectUrl>https://github.com/ErtugrulKra/Chronolap</projectUrl>
+    <icon>logo.png</icon>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+  
+    <copyright>Copyright (c) Ertugrul Kara </copyright>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+	
+	
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chronolap\Chronolap.csproj" />
+  </ItemGroup>
+
+</Project>
