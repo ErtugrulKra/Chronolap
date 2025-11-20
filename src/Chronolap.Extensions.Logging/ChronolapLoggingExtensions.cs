@@ -19,7 +19,7 @@
             }
 
             var logMessage = new StringBuilder();
-            logMessage.AppendLine("⏱ Chronolap Results:");
+            logMessage.AppendLine("Chronolap Results:");
 
             for (int i = 0; i < laps.Count; i++)
             {

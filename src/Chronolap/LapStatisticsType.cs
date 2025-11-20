@@ -4,6 +4,10 @@
     {
         ArithmeticMean,
         Median,
-        StandardDeviation
+        StandardDeviation,
+        Min,
+        Max,
+        Variance,
+        Percentile
     }
 }

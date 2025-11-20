@@ -12,11 +12,17 @@ Advanced stopwatch library with lap tracking support for .NET developers.
 
 ## Features
 
-- Lap tracking  
-- Measurement time recording  
-- Pause / Resume (coming soon)  
-- ILogger logging support  
-- Synchronous and asynchronous measurement methods  
+- Lap tracking with configurable maximum lap count
+- Measurement time recording (synchronous and asynchronous)
+- Return value support in measurement methods
+- Exception handling support (measurements are recorded even when exceptions occur)
+- Pause / Resume functionality
+- Advanced statistics (Min, Max, Mean, Median, Standard Deviation, Variance, Percentiles)
+- Fastest/Slowest lap detection
+- ILogger logging support
+- OpenTelemetry Activity integration
+- Configurable minimum lap count for statistics
+- Cached total lap time calculation for optimal performance  
 
 
 ## Installation
@@ -29,6 +35,8 @@ dotnet add package Chronolap
 
 
 ## Usage
+
+### Basic Usage
 
 ```csharp
 using Chronolap;
@@ -54,6 +62,129 @@ class Program
         }
     }
 }
+```
+
+### Measurement with Return Values
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+// Measure and get return value
+int result = timer.MeasureExecutionTime(() => CalculateValue(), "Calculation");
+Console.WriteLine($"Result: {result}");
+
+// Async measurement with return value
+var data = await timer.MeasureExecutionTimeAsync(async () => 
+{
+    return await FetchDataAsync();
+}, "DataFetch");
+```
+
+### Exception Handling
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+// Lap is recorded even if exception occurs
+try
+{
+    timer.MeasureExecutionTimeWithExceptionHandling(() => 
+    {
+        RiskyOperation();
+    }, "RiskyOperation");
+}
+catch (Exception ex)
+{
+    // Lap was still recorded
+    Console.WriteLine($"Operation failed but timing was recorded");
+}
+
+// With return value
+int? result = null;
+try
+{
+    result = timer.MeasureExecutionTimeWithExceptionHandling(() => 
+    {
+        return RiskyOperationWithReturn();
+    }, "RiskyOperation");
+}
+finally
+{
+    // Timing is always recorded
+}
+```
+
+### Advanced Statistics
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+// Record multiple laps
+for (int i = 0; i < 50; i++)
+{
+    Thread.Sleep(10 + i);
+    timer.Lap($"Lap{i}");
+}
+
+// Calculate statistics
+var min = timer.CalculateLapStatistic(LapStatisticsType.Min);
+var max = timer.CalculateLapStatistic(LapStatisticsType.Max);
+var mean = timer.CalculateLapStatistic(LapStatisticsType.ArithmeticMean);
+var median = timer.CalculateLapStatistic(LapStatisticsType.Median);
+var stdDev = timer.CalculateLapStatistic(LapStatisticsType.StandardDeviation);
+var variance = timer.CalculateLapStatistic(LapStatisticsType.Variance);
+
+// Calculate percentiles
+var p50 = timer.CalculatePercentile(50);  // Median
+var p95 = timer.CalculatePercentile(95);  // 95th percentile
+var p99 = timer.CalculatePercentile(99);  // 99th percentile
+
+// Find fastest and slowest laps
+var fastest = timer.GetFastestLap();
+var slowest = timer.GetSlowestLap();
+
+Console.WriteLine($"Fastest: {fastest?.Name} ({fastest?.Duration.TotalMilliseconds} ms)");
+Console.WriteLine($"Slowest: {slowest?.Name} ({slowest?.Duration.TotalMilliseconds} ms)");
+```
+
+### Configuration
+
+```csharp
+// Configure maximum lap count and minimum lap count for statistics
+var timer = new ChronolapTimer(
+    maxLapCount: 5000, 
+    minimumLapCountForStatistics: 50
+);
+
+// Or change minimum lap count at runtime
+timer.MinimumLapCountForStatistics = 100;
+
+// Access configuration
+Console.WriteLine($"Max Lap Count: {timer.MaxLapCount}");
+Console.WriteLine($"Min Lap Count for Stats: {timer.MinimumLapCountForStatistics}");
+```
+
+### Pause and Resume
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+Thread.Sleep(100);
+timer.Lap("Before pause");
+
+timer.Pause();
+// Timer is paused, elapsed time won't increase
+Thread.Sleep(1000); // This won't be counted
+
+timer.Resume();
+Thread.Sleep(200);
+timer.Lap("After resume");
+
+timer.Stop();
 ```
 
 
@@ -100,18 +231,36 @@ using (var activity = activitySource.StartActivity("ExampleOperation"))
 Contributions are welcome! Please open issues or pull requests.
 
 
-## 📢 What's New (v1.2.0)
-# 🆕 Lap Logger Extension
+## What's New
 
-ILogger Integration: Chronolap can now log lap results directly through ILogger.
+### v1.2.0 - Advanced Statistics, Performance Improvements & New Features
 
-Batch Logging: All laps can be logged at once in a clean format.
+**New Statistics Features:**
+- Min, Max, Variance statistics support
+- Percentile calculation (P50, P95, P99, etc.)
+- GetFastestLap() and GetSlowestLap() methods
+- Configurable minimum lap count for statistics
 
-Customizable Formatting: Use the default format or provide your own custom formatter.
+**Performance Improvements:**
+- Cached TotalLapTime calculation (O(1) instead of O(n))
+- Configurable maximum lap count
 
-Log Level Support: Log laps at Debug, Information, Warning, or any other log level.
+**New Measurement Features:**
+- Return value support in measurement methods
+- Exception handling support (measurements recorded even when exceptions occur)
+- Both synchronous and asynchronous variants
 
-### Example
+**Configuration:**
+- MaxLapCount constructor parameter
+- MinimumLapCountForStatistics property
+
+**ILogger Integration:**
+- Chronolap can now log lap results directly through ILogger
+- Batch Logging: All laps can be logged at once in a clean format
+- Customizable Formatting: Use the default format or provide your own custom formatter
+- Log Level Support: Log laps at Debug, Information, Warning, or any other log level
+
+### Example - Logging Extension
 
 ```csharp
 var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
@@ -121,10 +270,10 @@ var chrono = new ChronolapTimer();
 chrono.Start();
 
 Thread.Sleep(500);
-chrono.Lap();
+chrono.Lap("First operation");
 
 Thread.Sleep(700);
-chrono.Lap();
+chrono.Lap("Second operation");
 
 chrono.Stop();
 
@@ -135,7 +284,7 @@ Output will looks like this;
 
 ```bash
 info: Program[0]
-      ⏱ Chronolap Results:
+      Chronolap Results:
       Lap 1: 00:00:00.5000000
       Lap 2: 00:00:01.2000000
 ```
