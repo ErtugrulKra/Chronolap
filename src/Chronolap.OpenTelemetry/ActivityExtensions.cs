@@ -1,8 +1,7 @@
-﻿using Chronolap;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Linq;
 
-namespace Choronolap.OpenTelemetry
+namespace Chronolap.OpenTelemetry
 {
     public static class ActivityExtensions
     {
