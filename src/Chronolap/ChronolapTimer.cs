@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Chronolap
@@ -17,11 +18,32 @@ namespace Chronolap
         private readonly int _maxLapCount;
         private TimeSpan _cachedTotalLapTime;
         private bool _isTotalLapTimeDirty;
+        private readonly object _lockObject = new object();
 
-        public bool IsPaused => _isPaused;
+        public bool IsPaused
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _isPaused;
+                }
+            }
+        }
+
         public TimeSpan Elapsed => _stopwatch.Elapsed;
 
-        public IReadOnlyList<LapInfo> Laps => _laps.AsReadOnly();
+        public IReadOnlyList<LapInfo> Laps
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _laps.ToList().AsReadOnly();
+                }
+            }
+        }
+
         public bool IsRunning => _stopwatch.IsRunning;
         public int MaxLapCount => _maxLapCount;
         public int MinimumLapCountForStatistics { get; set; } = 30;
@@ -30,16 +52,19 @@ namespace Chronolap
         {
             get
             {
-                if (_isTotalLapTimeDirty)
+                lock (_lockObject)
                 {
-                    _cachedTotalLapTime = TimeSpan.Zero;
-                    foreach (var lap in _laps)
+                    if (_isTotalLapTimeDirty)
                     {
-                        _cachedTotalLapTime += lap.Duration;
+                        _cachedTotalLapTime = TimeSpan.Zero;
+                        foreach (var lap in _laps)
+                        {
+                            _cachedTotalLapTime += lap.Duration;
+                        }
+                        _isTotalLapTimeDirty = false;
                     }
-                    _isTotalLapTimeDirty = false;
+                    return _cachedTotalLapTime;
                 }
-                return _cachedTotalLapTime;
             }
         }
 
@@ -72,28 +97,37 @@ namespace Chronolap
 
         public void Reset()
         {
-            _stopwatch.Reset();
-            _laps.Clear();
-            _lastLapTimestamp = TimeSpan.Zero;
-            _cachedTotalLapTime = TimeSpan.Zero;
-            _isTotalLapTimeDirty = false;
+            lock (_lockObject)
+            {
+                _stopwatch.Reset();
+                _laps.Clear();
+                _lastLapTimestamp = TimeSpan.Zero;
+                _cachedTotalLapTime = TimeSpan.Zero;
+                _isTotalLapTimeDirty = false;
+            }
         }
 
         public void Pause()
         {
-            if (_stopwatch.IsRunning)
+            lock (_lockObject)
             {
-                _stopwatch.Stop();
-                _isPaused = true;
+                if (_stopwatch.IsRunning)
+                {
+                    _stopwatch.Stop();
+                    _isPaused = true;
+                }
             }
         }
 
         public void Resume()
         {
-            if (_isPaused)
+            lock (_lockObject)
             {
-                _stopwatch.Start();
-                _isPaused = false;
+                if (_isPaused)
+                {
+                    _stopwatch.Start();
+                    _isPaused = false;
+                }
             }
         }
 
@@ -117,14 +151,19 @@ namespace Chronolap
 
         private void RecordLap(string? name, TimeSpan timestamp, TimeSpan duration, string defaultNamePrefix = "Lap")
         {
-            var lap = new LapInfo
+            LapInfo lap;
+            lock (_lockObject)
             {
-                Name = name ?? $"{defaultNamePrefix} {Laps.Count + 1}",
-                Duration = duration,
-                Timestamp = timestamp
-            };
+                lap = new LapInfo
+                {
+                    Name = name ?? $"{defaultNamePrefix} {_laps.Count + 1}",
+                    Duration = duration,
+                    Timestamp = timestamp
+                };
 
-            AddLapInternal(lap);
+                AddLapInternal(lap);
+            }
+
             _logger?.LogInformation("Lap recorded: {LapName}, Duration: {Duration} ms", lap.Name, lap.Duration.TotalMilliseconds);
         }
 
@@ -226,8 +265,16 @@ namespace Chronolap
 
         public void Lap(string name)
         {
-            var now = _stopwatch.Elapsed;
-            var lapDuration = now - _lastLapTimestamp;
+            TimeSpan now;
+            TimeSpan lastLapTimestamp;
+            
+            lock (_lockObject)
+            {
+                now = _stopwatch.Elapsed;
+                lastLapTimestamp = _lastLapTimestamp;
+            }
+            
+            var lapDuration = now - lastLapTimestamp;
             RecordLap(name, now, lapDuration);
         }
 
@@ -315,10 +362,15 @@ namespace Chronolap
         public double? CalculateLapStatistic(LapStatisticsType statType, int? minimumLapCount = null)
         {
             int requiredCount = minimumLapCount ?? MinimumLapCountForStatistics;
-            if (_laps.Count < requiredCount)
-                return null;
+            List<double> durations;
+            
+            lock (_lockObject)
+            {
+                if (_laps.Count < requiredCount)
+                    return null;
 
-            var durations = _laps.Select(l => l.Duration.TotalMilliseconds).OrderBy(d => d).ToList();
+                durations = _laps.Select(l => l.Duration.TotalMilliseconds).OrderBy(d => d).ToList();
+            }
 
             switch (statType)
             {
@@ -356,13 +408,18 @@ namespace Chronolap
         public double? CalculatePercentile(double percentile, int? minimumLapCount = null)
         {
             int requiredCount = minimumLapCount ?? MinimumLapCountForStatistics;
-            if (_laps.Count < requiredCount)
-                return null;
-
+            
             if (percentile < 0 || percentile > 100)
                 throw new ArgumentOutOfRangeException(nameof(percentile), percentile, "Percentile must be between 0 and 100");
 
-            var durations = _laps.Select(l => l.Duration.TotalMilliseconds).OrderBy(d => d).ToList();
+            List<double> durations;
+            lock (_lockObject)
+            {
+                if (_laps.Count < requiredCount)
+                    return null;
+
+                durations = _laps.Select(l => l.Duration.TotalMilliseconds).OrderBy(d => d).ToList();
+            }
             
             if (durations.Count == 0)
                 return null;
@@ -386,18 +443,24 @@ namespace Chronolap
 
         public LapInfo? GetFastestLap()
         {
-            if (_laps.Count == 0)
-                return null;
+            lock (_lockObject)
+            {
+                if (_laps.Count == 0)
+                    return null;
 
-            return _laps.OrderBy(l => l.Duration).First();
+                return _laps.OrderBy(l => l.Duration).First();
+            }
         }
 
         public LapInfo? GetSlowestLap()
         {
-            if (_laps.Count == 0)
-                return null;
+            lock (_lockObject)
+            {
+                if (_laps.Count == 0)
+                    return null;
 
-            return _laps.OrderByDescending(l => l.Duration).First();
+                return _laps.OrderByDescending(l => l.Duration).First();
+            }
         }
 
 

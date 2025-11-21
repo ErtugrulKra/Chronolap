@@ -22,7 +22,8 @@ Advanced stopwatch library with lap tracking support for .NET developers.
 - ILogger logging support
 - OpenTelemetry Activity integration
 - Configurable minimum lap count for statistics
-- Cached total lap time calculation for optimal performance  
+- Cached total lap time calculation for optimal performance
+- **Thread-safe** - Safe to use in multi-threaded environments  
 
 
 ## Installation
@@ -187,6 +188,30 @@ timer.Lap("After resume");
 timer.Stop();
 ```
 
+### Thread-Safe Usage
+
+Chronolap is fully thread-safe and can be safely used in multi-threaded environments:
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+// Multiple threads can safely add laps concurrently
+Parallel.For(0, 100, i =>
+{
+    Thread.Sleep(10);
+    timer.Lap($"Lap{i}");
+});
+
+// Statistics can be calculated while other threads are adding laps
+var mean = timer.CalculateLapStatistic(LapStatisticsType.ArithmeticMean);
+var fastest = timer.GetFastestLap();
+
+timer.Stop();
+```
+
+All public methods and properties are thread-safe, ensuring safe concurrent access from multiple threads.
+
 
 ## OpenTelemetry Activity Extensions Usage
 
@@ -232,6 +257,14 @@ Contributions are welcome! Please open issues or pull requests.
 
 
 ## What's New
+
+### v1.3.0 - Thread-Safe Support
+
+**Thread Safety:**
+- Full thread-safe implementation using lock mechanism
+- Safe concurrent access from multiple threads
+- All public methods and properties are thread-safe
+- Thread-safe lap recording, statistics calculation, and state management
 
 ### v1.2.0 - Advanced Statistics, Performance Improvements & New Features
 
