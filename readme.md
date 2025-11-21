@@ -258,7 +258,7 @@ Contributions are welcome! Please open issues or pull requests.
 
 ## What's New
 
-### v1.3.0 - Thread-Safe Support
+### v1.2.1 - Thread-Safe Support
 
 **Thread Safety:**
 - Full thread-safe implementation using lock mechanism
