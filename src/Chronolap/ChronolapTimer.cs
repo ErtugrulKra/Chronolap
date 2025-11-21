@@ -97,59 +97,143 @@ namespace Chronolap
             }
         }
 
+        private void EnsureCapacity()
+        {
+            if (_laps.Count >= _maxLapCount)
+            {
+                var removedLap = _laps[0];
+                _laps.RemoveAt(0);
+                _cachedTotalLapTime -= removedLap.Duration;
+            }
+        }
+
+        private void AddLapInternal(LapInfo lap)
+        {
+            EnsureCapacity();
+            _laps.Add(lap);
+            _cachedTotalLapTime += lap.Duration;
+            _lastLapTimestamp = lap.Timestamp;
+        }
+
+        private void RecordLap(string? name, TimeSpan timestamp, TimeSpan duration, string defaultNamePrefix = "Lap")
+        {
+            var lap = new LapInfo
+            {
+                Name = name ?? $"{defaultNamePrefix} {Laps.Count + 1}",
+                Duration = duration,
+                Timestamp = timestamp
+            };
+
+            AddLapInternal(lap);
+            _logger?.LogInformation("Lap recorded: {LapName}, Duration: {Duration} ms", lap.Name, lap.Duration.TotalMilliseconds);
+        }
+
+        private void MeasureAndRecord(string? lapName, Action action, bool handleExceptions = false)
+        {
+            var before = _stopwatch.Elapsed;
+            if (handleExceptions)
+            {
+                try
+                {
+                    action();
+                }
+                finally
+                {
+                    var after = _stopwatch.Elapsed;
+                    RecordLap(lapName, after, after - before, "Measured Lap");
+                }
+            }
+            else
+            {
+                action();
+                var after = _stopwatch.Elapsed;
+                RecordLap(lapName, after, after - before, "Measured Lap");
+            }
+        }
+
+        private async Task MeasureAndRecordAsync(string? lapName, Func<Task> asyncAction, bool handleExceptions = false)
+        {
+            var before = _stopwatch.Elapsed;
+            if (handleExceptions)
+            {
+                try
+                {
+                    await asyncAction();
+                }
+                finally
+                {
+                    var after = _stopwatch.Elapsed;
+                    RecordLap(lapName, after, after - before, "Measured Lap");
+                }
+            }
+            else
+            {
+                await asyncAction();
+                var after = _stopwatch.Elapsed;
+                RecordLap(lapName, after, after - before, "Measured Lap");
+            }
+        }
+
+        private T MeasureAndRecord<T>(string? lapName, Func<T> func, bool handleExceptions = false)
+        {
+            var before = _stopwatch.Elapsed;
+            T result;
+            if (handleExceptions)
+            {
+                try
+                {
+                    result = func();
+                }
+                finally
+                {
+                    var after = _stopwatch.Elapsed;
+                    RecordLap(lapName, after, after - before, "Measured Lap");
+                }
+            }
+            else
+            {
+                result = func();
+                var after = _stopwatch.Elapsed;
+                RecordLap(lapName, after, after - before, "Measured Lap");
+            }
+            return result;
+        }
+
+        private async Task<T> MeasureAndRecordAsync<T>(string? lapName, Func<Task<T>> asyncFunc, bool handleExceptions = false)
+        {
+            var before = _stopwatch.Elapsed;
+            T result;
+            if (handleExceptions)
+            {
+                try
+                {
+                    result = await asyncFunc();
+                }
+                finally
+                {
+                    var after = _stopwatch.Elapsed;
+                    RecordLap(lapName, after, after - before, "Measured Lap");
+                }
+            }
+            else
+            {
+                result = await asyncFunc();
+                var after = _stopwatch.Elapsed;
+                RecordLap(lapName, after, after - before, "Measured Lap");
+            }
+            return result;
+        }
+
         public void Lap(string name)
         {
             var now = _stopwatch.Elapsed;
             var lapDuration = now - _lastLapTimestamp;
-
-            var lap = new LapInfo
-            {
-                Name = name ?? $"Lap {Laps.Count + 1}",
-                Duration = lapDuration,
-                Timestamp = now
-            };
-
-            if (_laps.Count >= _maxLapCount)
-            {
-                var removedLap = _laps[0];
-                _laps.RemoveAt(0);
-                _cachedTotalLapTime -= removedLap.Duration;
-            }
-
-            _laps.Add(lap);
-            _cachedTotalLapTime += lap.Duration;
-            _lastLapTimestamp = now;
-
-            _logger?.LogInformation("Lap recorded: {LapName}, Duration: {Duration} ms", lap.Name, lap.Duration.TotalMilliseconds);
-
+            RecordLap(name, now, lapDuration);
         }
 
         public void MeasureExecutionTime(Action action, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            action();
-
-            var after = _stopwatch.Elapsed;
-            var lapDuration = after - before;
-
-            if (_laps.Count >= _maxLapCount)
-            {
-                var removedLap = _laps[0];
-                _laps.RemoveAt(0);
-                _cachedTotalLapTime -= removedLap.Duration;
-            }
-
-            var lap = new LapInfo
-            {
-                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                Duration = lapDuration,
-                Timestamp = after
-            };
-
-            _laps.Add(lap);
-            _cachedTotalLapTime += lap.Duration;
-            _lastLapTimestamp = after;
+            MeasureAndRecord(lapName, action, handleExceptions: false);
         }
 
         public void MeasureExecutionTime(Action action)
@@ -159,30 +243,7 @@ namespace Chronolap
 
         public async Task MeasureExecutionTimeAsync(Func<Task> asyncAction, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            await asyncAction();
-
-            var after = _stopwatch.Elapsed;
-            var lapDuration = after - before;
-
-            if (_laps.Count >= _maxLapCount)
-            {
-                var removedLap = _laps[0];
-                _laps.RemoveAt(0);
-                _cachedTotalLapTime -= removedLap.Duration;
-            }
-
-            var lap = new LapInfo
-            {
-                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                Duration = lapDuration,
-                Timestamp = after
-            };
-
-            _laps.Add(lap);
-            _cachedTotalLapTime += lap.Duration;
-            _lastLapTimestamp = after;
+            await MeasureAndRecordAsync(lapName, asyncAction, handleExceptions: false);
         }
 
         public async Task MeasureExecutionTimeAsync(Func<Task> asyncAction)
@@ -192,31 +253,7 @@ namespace Chronolap
 
         public T MeasureExecutionTime<T>(Func<T> func, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            T result = func();
-
-            var after = _stopwatch.Elapsed;
-            var lapDuration = after - before;
-
-            if (_laps.Count >= _maxLapCount)
-            {
-                var removedLap = _laps[0];
-                _laps.RemoveAt(0);
-                _cachedTotalLapTime -= removedLap.Duration;
-            }
-
-            var lap = new LapInfo
-            {
-                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                Duration = lapDuration,
-                Timestamp = after
-            };
-
-            _laps.Add(lap);
-            _cachedTotalLapTime += lap.Duration;
-            _lastLapTimestamp = after;
-            return result;
+            return MeasureAndRecord(lapName, func, handleExceptions: false);
         }
 
         public T MeasureExecutionTime<T>(Func<T> func)
@@ -226,31 +263,7 @@ namespace Chronolap
 
         public async Task<T> MeasureExecutionTimeAsync<T>(Func<Task<T>> asyncFunc, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            T result = await asyncFunc();
-
-            var after = _stopwatch.Elapsed;
-            var lapDuration = after - before;
-
-            if (_laps.Count >= _maxLapCount)
-            {
-                var removedLap = _laps[0];
-                _laps.RemoveAt(0);
-                _cachedTotalLapTime -= removedLap.Duration;
-            }
-
-            var lap = new LapInfo
-            {
-                Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                Duration = lapDuration,
-                Timestamp = after
-            };
-
-            _laps.Add(lap);
-            _cachedTotalLapTime += lap.Duration;
-            _lastLapTimestamp = after;
-            return result;
+            return await MeasureAndRecordAsync(lapName, asyncFunc, handleExceptions: false);
         }
 
         public async Task<T> MeasureExecutionTimeAsync<T>(Func<Task<T>> asyncFunc)
@@ -260,35 +273,7 @@ namespace Chronolap
 
         public void MeasureExecutionTimeWithExceptionHandling(Action action, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            try
-            {
-                action();
-            }
-            finally
-            {
-                var after = _stopwatch.Elapsed;
-                var lapDuration = after - before;
-
-                if (_laps.Count >= _maxLapCount)
-                {
-                    var removedLap = _laps[0];
-                    _laps.RemoveAt(0);
-                    _cachedTotalLapTime -= removedLap.Duration;
-                }
-
-                var lap = new LapInfo
-                {
-                    Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                    Duration = lapDuration,
-                    Timestamp = after
-                };
-
-                _laps.Add(lap);
-                _cachedTotalLapTime += lap.Duration;
-                _lastLapTimestamp = after;
-            }
+            MeasureAndRecord(lapName, action, handleExceptions: true);
         }
 
         public void MeasureExecutionTimeWithExceptionHandling(Action action)
@@ -298,35 +283,7 @@ namespace Chronolap
 
         public async Task MeasureExecutionTimeWithExceptionHandlingAsync(Func<Task> asyncAction, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-
-            try
-            {
-                await asyncAction();
-            }
-            finally
-            {
-                var after = _stopwatch.Elapsed;
-                var lapDuration = after - before;
-
-                if (_laps.Count >= _maxLapCount)
-                {
-                    var removedLap = _laps[0];
-                    _laps.RemoveAt(0);
-                    _cachedTotalLapTime -= removedLap.Duration;
-                }
-
-                var lap = new LapInfo
-                {
-                    Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                    Duration = lapDuration,
-                    Timestamp = after
-                };
-
-                _laps.Add(lap);
-                _cachedTotalLapTime += lap.Duration;
-                _lastLapTimestamp = after;
-            }
+            await MeasureAndRecordAsync(lapName, asyncAction, handleExceptions: true);
         }
 
         public async Task MeasureExecutionTimeWithExceptionHandlingAsync(Func<Task> asyncAction)
@@ -336,38 +293,7 @@ namespace Chronolap
 
         public T MeasureExecutionTimeWithExceptionHandling<T>(Func<T> func, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-            T result;
-
-            try
-            {
-                result = func();
-            }
-            finally
-            {
-                var after = _stopwatch.Elapsed;
-                var lapDuration = after - before;
-
-                if (_laps.Count >= _maxLapCount)
-                {
-                    var removedLap = _laps[0];
-                    _laps.RemoveAt(0);
-                    _cachedTotalLapTime -= removedLap.Duration;
-                }
-
-                var lap = new LapInfo
-                {
-                    Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                    Duration = lapDuration,
-                    Timestamp = after
-                };
-
-                _laps.Add(lap);
-                _cachedTotalLapTime += lap.Duration;
-                _lastLapTimestamp = after;
-            }
-
-            return result;
+            return MeasureAndRecord(lapName, func, handleExceptions: true);
         }
 
         public T MeasureExecutionTimeWithExceptionHandling<T>(Func<T> func)
@@ -377,38 +303,7 @@ namespace Chronolap
 
         public async Task<T> MeasureExecutionTimeWithExceptionHandlingAsync<T>(Func<Task<T>> asyncFunc, string lapName)
         {
-            var before = _stopwatch.Elapsed;
-            T result;
-
-            try
-            {
-                result = await asyncFunc();
-            }
-            finally
-            {
-                var after = _stopwatch.Elapsed;
-                var lapDuration = after - before;
-
-                if (_laps.Count >= _maxLapCount)
-                {
-                    var removedLap = _laps[0];
-                    _laps.RemoveAt(0);
-                    _cachedTotalLapTime -= removedLap.Duration;
-                }
-
-                var lap = new LapInfo
-                {
-                    Name = lapName ?? $"Measured Lap {Laps.Count + 1}",
-                    Duration = lapDuration,
-                    Timestamp = after
-                };
-
-                _laps.Add(lap);
-                _cachedTotalLapTime += lap.Duration;
-                _lastLapTimestamp = after;
-            }
-
-            return result;
+            return await MeasureAndRecordAsync(lapName, asyncFunc, handleExceptions: true);
         }
 
         public async Task<T> MeasureExecutionTimeWithExceptionHandlingAsync<T>(Func<Task<T>> asyncFunc)
