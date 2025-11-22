@@ -563,6 +563,214 @@ namespace Chronolap.Tests
             Assert.Equal(TimeSpan.Zero, timer.TotalLapTime);
         }
 
+        [Fact]
+        public void ThreadSafety_MultipleThreads_CanAddLapsConcurrently()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+
+            const int threadCount = 10;
+            const int lapsPerThread = 50;
+            var threads = new System.Threading.Thread[threadCount];
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int threadId = i;
+                threads[i] = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < lapsPerThread; j++)
+                        {
+                            timer.Lap($"Thread{threadId}_Lap{j}");
+                            System.Threading.Thread.Sleep(1);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                });
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            Assert.Empty(exceptions);
+            Assert.Equal(threadCount * lapsPerThread, timer.Laps.Count);
+        }
+
+        [Fact]
+        public void ThreadSafety_MultipleThreads_CanCalculateStatisticsConcurrently()
+        {
+            var timer = new ChronolapTimer(minimumLapCountForStatistics: 10);
+            timer.Start();
+
+            const int threadCount = 5;
+            const int lapsPerThread = 20;
+            var threads = new System.Threading.Thread[threadCount];
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int threadId = i;
+                threads[i] = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < lapsPerThread; j++)
+                        {
+                            timer.Lap($"Thread{threadId}_Lap{j}");
+                            System.Threading.Thread.Sleep(1);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                });
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Start();
+            }
+
+            var statsThread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    while (timer.Laps.Count < threadCount * lapsPerThread)
+                    {
+                        timer.CalculateLapStatistic(LapStatisticsType.ArithmeticMean);
+                        timer.CalculatePercentile(50);
+                        timer.GetFastestLap();
+                        timer.GetSlowestLap();
+                        System.Threading.Thread.Sleep(10);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            });
+
+            statsThread.Start();
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            statsThread.Join();
+
+            Assert.Empty(exceptions);
+            var mean = timer.CalculateLapStatistic(LapStatisticsType.ArithmeticMean);
+            Assert.NotNull(mean);
+        }
+
+        [Fact]
+        public void ThreadSafety_MultipleThreads_CanPauseAndResumeConcurrently()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+
+            const int threadCount = 5;
+            var threads = new System.Threading.Thread[threadCount];
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int threadId = i;
+                threads[i] = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < 10; j++)
+                        {
+                            timer.Pause();
+                            System.Threading.Thread.Sleep(1);
+                            timer.Resume();
+                            System.Threading.Thread.Sleep(1);
+                            timer.Lap($"Thread{threadId}_Lap{j}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                });
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            Assert.Empty(exceptions);
+            Assert.Equal(threadCount * 10, timer.Laps.Count);
+        }
+
+        [Fact]
+        public void ThreadSafety_MultipleThreads_CanMeasureExecutionTimeConcurrently()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+
+            const int threadCount = 5;
+            const int operationsPerThread = 20;
+            var threads = new System.Threading.Thread[threadCount];
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int threadId = i;
+                threads[i] = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < operationsPerThread; j++)
+                        {
+                            timer.MeasureExecutionTime(() =>
+                            {
+                                System.Threading.Thread.Sleep(1);
+                            }, $"Thread{threadId}_Op{j}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(ex);
+                    }
+                });
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            Assert.Empty(exceptions);
+            Assert.Equal(threadCount * operationsPerThread, timer.Laps.Count);
+        }
+
     }
 
 }

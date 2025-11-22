@@ -21,8 +21,10 @@ Advanced stopwatch library with lap tracking support for .NET developers.
 - Fastest/Slowest lap detection
 - ILogger logging support
 - OpenTelemetry Activity integration
+- Dependency Injection support (`AddChronolap()` extension method)
 - Configurable minimum lap count for statistics
-- Cached total lap time calculation for optimal performance  
+- Cached total lap time calculation for optimal performance
+- **Thread-safe** - Safe to use in multi-threaded environments  
 
 
 ## Installation
@@ -187,6 +189,30 @@ timer.Lap("After resume");
 timer.Stop();
 ```
 
+### Thread-Safe Usage
+
+Chronolap is fully thread-safe and can be safely used in multi-threaded environments:
+
+```csharp
+var timer = new ChronolapTimer();
+timer.Start();
+
+// Multiple threads can safely add laps concurrently
+Parallel.For(0, 100, i =>
+{
+    Thread.Sleep(10);
+    timer.Lap($"Lap{i}");
+});
+
+// Statistics can be calculated while other threads are adding laps
+var mean = timer.CalculateLapStatistic(LapStatisticsType.ArithmeticMean);
+var fastest = timer.GetFastestLap();
+
+timer.Stop();
+```
+
+All public methods and properties are thread-safe, ensuring safe concurrent access from multiple threads.
+
 
 ## OpenTelemetry Activity Extensions Usage
 
@@ -225,6 +251,77 @@ using (var activity = activitySource.StartActivity("ExampleOperation"))
 }
 ```
 
+## Dependency Injection Support
+
+Chronolap provides built-in support for Dependency Injection through the `AddChronolap()` extension method. This allows you to easily register `ChronolapTimer` in your service collection and inject it into your classes.
+
+### Basic Usage
+
+```csharp
+using Chronolap;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+// Register Chronolap with default settings
+builder.Services.AddChronolap();
+
+// Or configure options
+builder.Services.AddChronolap(options =>
+{
+    options.MaxLapCount = 5000;
+    options.MinimumLapCountForStatistics = 50;
+});
+
+var app = builder.Build();
+```
+
+### Using in Your Classes
+
+```csharp
+using Chronolap;
+using Microsoft.Extensions.Logging;
+
+public class MyService
+{
+    private readonly ChronolapTimer _timer;
+    private readonly ILogger<MyService> _logger;
+
+    public MyService(ChronolapTimer timer, ILogger<MyService> logger)
+    {
+        _timer = timer;
+        _logger = logger;
+    }
+
+    public void DoWork()
+    {
+        _timer.Start();
+        
+        // Your operations here
+        Thread.Sleep(100);
+        _timer.Lap("Operation 1");
+        
+        Thread.Sleep(200);
+        _timer.Lap("Operation 2");
+        
+        _timer.Stop();
+        
+        // Log results using extension method
+        _logger.LogLaps(_timer, LogLevel.Information);
+    }
+}
+```
+
+### Configuration Options
+
+The `AddChronolap()` method supports configuration through `ChronolapOptions`:
+
+- `MaxLapCount`: Maximum number of laps to store (default: 1000)
+- `MinimumLapCountForStatistics`: Minimum lap count required for statistics calculation (default: 30)
+
+If `ILogger<ChronolapTimer>` is registered in your DI container, ChronolapTimer will automatically use it for logging lap information.
+
 
 ## Contributing
 
@@ -232,6 +329,15 @@ Contributions are welcome! Please open issues or pull requests.
 
 
 ## What's New
+
+### v1.2.1 - Thread-Safe Support
+
+**Thread Safety:**
+- Full thread-safe implementation using lock mechanism
+- Safe concurrent access from multiple threads
+- All public methods and properties are thread-safe
+- Thread-safe lap recording, statistics calculation, and state management
+- Built-in support for Dependency Injection
 
 ### v1.2.0 - Advanced Statistics, Performance Improvements & New Features
 
