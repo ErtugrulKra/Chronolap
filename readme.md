@@ -337,6 +337,7 @@ Contributions are welcome! Please open issues or pull requests.
 - Safe concurrent access from multiple threads
 - All public methods and properties are thread-safe
 - Thread-safe lap recording, statistics calculation, and state management
+- Built-in support for Dependency Injection
 
 ### v1.2.0 - Advanced Statistics, Performance Improvements & New Features
 
