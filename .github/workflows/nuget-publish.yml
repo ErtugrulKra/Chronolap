@@ -1,4 +1,4 @@
-name: Chronolap Nuget
+name: Chronolap NuGet Packages
 
 on:
   workflow_dispatch:   
@@ -19,11 +19,20 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ./src/Chronolap.sln      
 
-      - name: Build project
+      - name: Build solution
         run: dotnet build ./src/Chronolap.sln --configuration Release --no-restore
 
-      - name: Pack NuGet package
-        run: dotnet pack ./src/Chronolap.sln --configuration Release --no-build -o ./nupkg
+      - name: Pack Chronolap
+        run: dotnet pack ./src/Chronolap/Chronolap.csproj --configuration Release --no-build -o ./nupkg
 
-      - name: Push package
-        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
+      - name: Pack Chronolap.OpenTelemetry
+        run: dotnet pack ./src/Chronolap.OpenTelemetry/Chronolap.OpenTelemetry.csproj --configuration Release --no-build -o ./nupkg
+
+      - name: Pack Chronolap.Extensions.Logging
+        run: dotnet pack ./src/Chronolap.Extensions.Logging/Chronolap.Extensions.Logging.csproj --configuration Release --no-build -o ./nupkg
+
+      - name: Pack Chronolap.Profiler
+        run: dotnet pack ./src/Chronolap.Profiler/Chronolap.Profiler.csproj --configuration Release --no-build -o ./nupkg
+
+      - name: Push all packages to NuGet
+        run: dotnet nuget push ./nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
