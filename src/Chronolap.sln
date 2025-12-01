@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap.OpenTelemetry", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap.Extensions.Logging", "Chronolap.Extensions.Logging\Chronolap.Extensions.Logging.csproj", "{87DF7435-9452-41C8-AC3B-8A254E1F5042}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chronolap.Profiler", "Chronolap.Profiler\Chronolap.Profiler.csproj", "{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{87DF7435-9452-41C8-AC3B-8A254E1F5042}.Release|x64.Build.0 = Release|Any CPU
 		{87DF7435-9452-41C8-AC3B-8A254E1F5042}.Release|x86.ActiveCfg = Release|Any CPU
 		{87DF7435-9452-41C8-AC3B-8A254E1F5042}.Release|x86.Build.0 = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|x64.Build.0 = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Debug|x86.Build.0 = Debug|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|x64.ActiveCfg = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|x64.Build.0 = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|x86.ActiveCfg = Release|Any CPU
+		{3A60C7A0-F07C-4B76-9DED-C0C60C7B0E0D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -35,7 +35,6 @@ Install via NuGet:
 dotnet add package Chronolap
 ```
 
-
 ## Usage
 
 ### Basic Usage
@@ -312,6 +311,75 @@ public class MyService
     }
 }
 ```
+
+### 🎯 Automatic Method Profiling (Chronolap.Profiler)
+
+For automatic method profiling with attributes and AOP support:
+
+```bash
+dotnet add package Chronolap.Profiler
+```
+
+**Simple Usage:**
+
+```csharp
+using Chronolap.Profiler;
+using Microsoft.Extensions.DependencyInjection;
+
+// Setup DI
+var services = new ServiceCollection();
+services.AddLogging();
+services.AddChronolapProfiler();
+
+// Create service with interface
+services.AddTransient<IDataService, DataService>();
+var serviceProvider = services.BuildServiceProvider();
+
+// Use the service - methods with [ChronolapProfile] are automatically profiled!
+var dataService = serviceProvider.GetRequiredService<IDataService>();
+dataService.ProcessData();
+
+// View results
+var profiler = serviceProvider.GetRequiredService<ChronolapProfiler>();
+Console.WriteLine(profiler.ExportSummary());
+```
+
+**Service with Attributes:**
+
+```csharp
+public interface IDataService
+{
+    void ProcessData();
+    Task<int> CalculateAsync();
+}
+
+public class DataService : IDataService
+{
+    [ChronolapProfile("DataProcessing", Category = "Business", Tags = "critical")]
+    public void ProcessData()
+    {
+        // Your code - automatically profiled!
+        Thread.Sleep(100);
+    }
+
+    [ChronolapProfile("Calculation", Category = "Compute")]
+    public async Task<int> CalculateAsync()
+    {
+        // Async methods are also profiled!
+        await Task.Delay(50);
+        return 42;
+    }
+}
+```
+
+**Key Features:**
+- ✨ **Zero boilerplate** - Just add `[ChronolapProfile]` attribute
+- 🎯 **AOP-based** - Uses Castle.DynamicProxy for automatic interception
+- 📊 **Rich statistics** - Min/Max/Avg/Median, success rates
+- 🏷️ **Categorize & Tag** - Filter and group profiling results
+- ⚡ **Production ready** - Minimal overhead, thread-safe
+
+---
 
 ### Configuration Options
 
