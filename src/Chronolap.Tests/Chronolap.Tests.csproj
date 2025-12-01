@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Chronolap\Chronolap.csproj" />
+    <ProjectReference Include="..\Chronolap.Profiler\Chronolap.Profiler.csproj" />
   </ItemGroup>
 
 </Project>
