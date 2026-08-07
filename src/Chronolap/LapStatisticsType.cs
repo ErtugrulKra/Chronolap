@@ -7,7 +7,6 @@
         StandardDeviation,
         Min,
         Max,
-        Variance,
-        Percentile
+        Variance
     }
 }

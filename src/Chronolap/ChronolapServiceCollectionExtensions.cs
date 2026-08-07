@@ -28,20 +28,7 @@ namespace Chronolap
 
             var options = new ChronolapOptions();
             configure(options);
-
-            services.TryAddTransient<ChronolapTimer>(serviceProvider =>
-            {
-                var logger = serviceProvider.GetService<ILogger<ChronolapTimer>>();
-                
-                if (logger != null)
-                {
-                    return new ChronolapTimer(logger, options.MaxLapCount, options.MinimumLapCountForStatistics);
-                }
-                
-                return new ChronolapTimer(options.MaxLapCount, options.MinimumLapCountForStatistics);
-            });
-
-            return services;
+            return AddChronolap(services, options);
         }
 
         public static IServiceCollection AddChronolap(this IServiceCollection services, ChronolapOptions options)
@@ -52,19 +39,32 @@ namespace Chronolap
             if (options == null)
                 throw new ArgumentNullException(nameof(options));
 
+            ValidateOptions(options);
+            var maxLapCount = options.MaxLapCount;
+            var minimumLapCountForStatistics = options.MinimumLapCountForStatistics;
+
             services.TryAddTransient<ChronolapTimer>(serviceProvider =>
             {
                 var logger = serviceProvider.GetService<ILogger<ChronolapTimer>>();
                 
                 if (logger != null)
                 {
-                    return new ChronolapTimer(logger, options.MaxLapCount, options.MinimumLapCountForStatistics);
+                    return new ChronolapTimer(logger, maxLapCount, minimumLapCountForStatistics);
                 }
                 
-                return new ChronolapTimer(options.MaxLapCount, options.MinimumLapCountForStatistics);
+                return new ChronolapTimer(maxLapCount, minimumLapCountForStatistics);
             });
 
             return services;
+        }
+
+        private static void ValidateOptions(ChronolapOptions options)
+        {
+            if (options.MaxLapCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(options.MaxLapCount), options.MaxLapCount, "MaxLapCount must be greater than 0");
+
+            if (options.MinimumLapCountForStatistics <= 0)
+                throw new ArgumentOutOfRangeException(nameof(options.MinimumLapCountForStatistics), options.MinimumLapCountForStatistics, "MinimumLapCountForStatistics must be greater than 0");
         }
     }
 }

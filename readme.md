@@ -138,7 +138,8 @@ var median = timer.CalculateLapStatistic(LapStatisticsType.Median);
 var stdDev = timer.CalculateLapStatistic(LapStatisticsType.StandardDeviation);
 var variance = timer.CalculateLapStatistic(LapStatisticsType.Variance);
 
-// Calculate percentiles
+// Calculate percentiles with the dedicated API (not LapStatisticsType)
+// A single lap has variance and standard deviation of 0
 var p50 = timer.CalculatePercentile(50);  // Median
 var p95 = timer.CalculatePercentile(95);  // 95th percentile
 var p99 = timer.CalculatePercentile(99);  // 99th percentile
@@ -161,7 +162,7 @@ var timer = new ChronolapTimer(
 );
 
 // Or change minimum lap count at runtime
-timer.MinimumLapCountForStatistics = 100;
+timer.MinimumLapCountForStatistics = 100; // Must be greater than zero
 
 // Access configuration
 Console.WriteLine($"Max Lap Count: {timer.MaxLapCount}");
@@ -210,7 +211,7 @@ var fastest = timer.GetFastestLap();
 timer.Stop();
 ```
 
-All public methods and properties are thread-safe, ensuring safe concurrent access from multiple threads.
+All timer state operations (`Start`, `Stop`, `Pause`, `Resume`, `Reset`, `Elapsed`, and `IsRunning`) and lap recording use the same synchronization model. Concurrent `Lap()` calls are serialized so recorded timestamps never move backwards and lap durations are never negative.
 
 
 ## OpenTelemetry Activity Extensions Usage
@@ -386,7 +387,7 @@ public class DataService : IDataService
 The `AddChronolap()` method supports configuration through `ChronolapOptions`:
 
 - `MaxLapCount`: Maximum number of laps to store (default: 1000)
-- `MinimumLapCountForStatistics`: Minimum lap count required for statistics calculation (default: 30)
+- `MinimumLapCountForStatistics`: Minimum lap count required for statistics calculation (default: 30, must be greater than zero). Invalid values are rejected during `AddChronolap()` registration.
 
 If `ILogger<ChronolapTimer>` is registered in your DI container, ChronolapTimer will automatically use it for logging lap information.
 

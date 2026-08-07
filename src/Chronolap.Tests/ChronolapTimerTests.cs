@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Threading;
 using Xunit;
@@ -181,6 +182,27 @@ namespace Chronolap.Tests
             var variance = timer.CalculateLapStatistic(LapStatisticsType.Variance, minimumLapCount: 30);
             Assert.NotNull(variance);
             Assert.True(variance >= 0);
+        }
+
+        [Theory]
+        [InlineData(LapStatisticsType.Variance)]
+        [InlineData(LapStatisticsType.StandardDeviation)]
+        public void CalculateLapStatistic_SingleLap_ReturnsZero(LapStatisticsType statistic)
+        {
+            var timer = new ChronolapTimer(minimumLapCountForStatistics: 1);
+            timer.Start();
+            timer.Lap("OnlyLap");
+
+            var result = timer.CalculateLapStatistic(statistic);
+
+            Assert.Equal(0, result);
+            Assert.False(double.IsNaN(result!.Value));
+        }
+
+        [Fact]
+        public void LapStatisticsType_DoesNotExposeUnsupportedPercentileOption()
+        {
+            Assert.DoesNotContain("Percentile", Enum.GetNames<LapStatisticsType>());
         }
 
         [Fact]
@@ -473,6 +495,39 @@ namespace Chronolap.Tests
             Assert.Equal(50, timer.MinimumLapCountForStatistics);
         }
 
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public void MinimumLapCountForStatistics_InvalidValueAfterConstruction_ThrowsException(int value)
+        {
+            var timer = new ChronolapTimer();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => timer.MinimumLapCountForStatistics = value);
+            Assert.Equal(30, timer.MinimumLapCountForStatistics);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public void AddChronolap_InvalidMinimumLapCountInConfigure_ThrowsException(int value)
+        {
+            var services = new ServiceCollection();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                services.AddChronolap(options => options.MinimumLapCountForStatistics = value));
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        public void AddChronolap_InvalidMinimumLapCountInOptions_ThrowsException(int value)
+        {
+            var services = new ServiceCollection();
+            var options = new ChronolapOptions { MinimumLapCountForStatistics = value };
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => services.AddChronolap(options));
+        }
+
         [Fact]
         public void CalculateLapStatistic_UsesProperty_WhenMinimumLapCountNotProvided()
         {
@@ -606,6 +661,13 @@ namespace Chronolap.Tests
 
             Assert.Empty(exceptions);
             Assert.Equal(threadCount * lapsPerThread, timer.Laps.Count);
+
+            var laps = timer.Laps;
+            Assert.All(laps, lap => Assert.True(lap.Duration >= TimeSpan.Zero));
+            for (var i = 1; i < laps.Count; i++)
+            {
+                Assert.True(laps[i].Timestamp >= laps[i - 1].Timestamp);
+            }
         }
 
         [Fact]
@@ -722,6 +784,58 @@ namespace Chronolap.Tests
 
             Assert.Empty(exceptions);
             Assert.Equal(threadCount * 10, timer.Laps.Count);
+        }
+
+        [Fact]
+        public void ThreadSafety_AllTimerStateOperationsUseOneSynchronizationModel()
+        {
+            var timer = new ChronolapTimer(maxLapCount: 5000);
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+
+            Parallel.For(0, 1000, i =>
+            {
+                try
+                {
+                    switch (i % 6)
+                    {
+                        case 0: timer.Start(); break;
+                        case 1: timer.Stop(); break;
+                        case 2: timer.Pause(); break;
+                        case 3: timer.Resume(); break;
+                        case 4: timer.Reset(); break;
+                        default: timer.Lap($"Lap{i}"); break;
+                    }
+
+                    _ = timer.Elapsed;
+                    _ = timer.IsRunning;
+                    _ = timer.IsPaused;
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            });
+
+            Assert.Empty(exceptions);
+            Assert.True(timer.Elapsed >= TimeSpan.Zero);
+            Assert.All(timer.Laps, lap => Assert.True(lap.Duration >= TimeSpan.Zero));
+        }
+
+        [Fact]
+        public void StopAndReset_ClearPausedState()
+        {
+            var timer = new ChronolapTimer();
+            timer.Start();
+            timer.Pause();
+
+            timer.Stop();
+            Assert.False(timer.IsPaused);
+
+            timer.Start();
+            timer.Pause();
+            timer.Reset();
+            Assert.False(timer.IsPaused);
+            Assert.False(timer.IsRunning);
         }
 
         [Fact]

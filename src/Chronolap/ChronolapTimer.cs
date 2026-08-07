@@ -16,6 +16,7 @@ namespace Chronolap
         private TimeSpan _lastLapTimestamp;
         private bool _isPaused;
         private readonly int _maxLapCount;
+        private int _minimumLapCountForStatistics;
         private TimeSpan _cachedTotalLapTime;
         private bool _isTotalLapTimeDirty;
         private readonly object _lockObject = new object();
@@ -31,7 +32,16 @@ namespace Chronolap
             }
         }
 
-        public TimeSpan Elapsed => _stopwatch.Elapsed;
+        public TimeSpan Elapsed
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _stopwatch.Elapsed;
+                }
+            }
+        }
 
         public IReadOnlyList<LapInfo> Laps
         {
@@ -44,9 +54,37 @@ namespace Chronolap
             }
         }
 
-        public bool IsRunning => _stopwatch.IsRunning;
+        public bool IsRunning
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _stopwatch.IsRunning;
+                }
+            }
+        }
         public int MaxLapCount => _maxLapCount;
-        public int MinimumLapCountForStatistics { get; set; } = 30;
+        public int MinimumLapCountForStatistics
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _minimumLapCountForStatistics;
+                }
+            }
+            set
+            {
+                if (value <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinimumLapCountForStatistics must be greater than 0");
+
+                lock (_lockObject)
+                {
+                    _minimumLapCountForStatistics = value;
+                }
+            }
+        }
 
         public TimeSpan TotalLapTime
         {
@@ -91,9 +129,23 @@ namespace Chronolap
             _isTotalLapTimeDirty = false;
         }
 
-        public void Start() => _stopwatch.Start();
+        public void Start()
+        {
+            lock (_lockObject)
+            {
+                _stopwatch.Start();
+                _isPaused = false;
+            }
+        }
 
-        public void Stop() => _stopwatch.Stop();
+        public void Stop()
+        {
+            lock (_lockObject)
+            {
+                _stopwatch.Stop();
+                _isPaused = false;
+            }
+        }
 
         public void Reset()
         {
@@ -102,6 +154,7 @@ namespace Chronolap
                 _stopwatch.Reset();
                 _laps.Clear();
                 _lastLapTimestamp = TimeSpan.Zero;
+                _isPaused = false;
                 _cachedTotalLapTime = TimeSpan.Zero;
                 _isTotalLapTimeDirty = false;
             }
@@ -169,7 +222,7 @@ namespace Chronolap
 
         private void MeasureAndRecord(string? lapName, Action action, bool handleExceptions = false)
         {
-            var before = _stopwatch.Elapsed;
+            var before = Elapsed;
             if (handleExceptions)
             {
                 try
@@ -178,21 +231,21 @@ namespace Chronolap
                 }
                 finally
                 {
-                    var after = _stopwatch.Elapsed;
+                    var after = Elapsed;
                     RecordLap(lapName, after, after - before, "Measured Lap");
                 }
             }
             else
             {
                 action();
-                var after = _stopwatch.Elapsed;
+                var after = Elapsed;
                 RecordLap(lapName, after, after - before, "Measured Lap");
             }
         }
 
         private async Task MeasureAndRecordAsync(string? lapName, Func<Task> asyncAction, bool handleExceptions = false)
         {
-            var before = _stopwatch.Elapsed;
+            var before = Elapsed;
             if (handleExceptions)
             {
                 try
@@ -201,21 +254,21 @@ namespace Chronolap
                 }
                 finally
                 {
-                    var after = _stopwatch.Elapsed;
+                    var after = Elapsed;
                     RecordLap(lapName, after, after - before, "Measured Lap");
                 }
             }
             else
             {
                 await asyncAction();
-                var after = _stopwatch.Elapsed;
+                var after = Elapsed;
                 RecordLap(lapName, after, after - before, "Measured Lap");
             }
         }
 
         private T MeasureAndRecord<T>(string? lapName, Func<T> func, bool handleExceptions = false)
         {
-            var before = _stopwatch.Elapsed;
+            var before = Elapsed;
             T result;
             if (handleExceptions)
             {
@@ -225,14 +278,14 @@ namespace Chronolap
                 }
                 finally
                 {
-                    var after = _stopwatch.Elapsed;
+                    var after = Elapsed;
                     RecordLap(lapName, after, after - before, "Measured Lap");
                 }
             }
             else
             {
                 result = func();
-                var after = _stopwatch.Elapsed;
+                var after = Elapsed;
                 RecordLap(lapName, after, after - before, "Measured Lap");
             }
             return result;
@@ -240,7 +293,7 @@ namespace Chronolap
 
         private async Task<T> MeasureAndRecordAsync<T>(string? lapName, Func<Task<T>> asyncFunc, bool handleExceptions = false)
         {
-            var before = _stopwatch.Elapsed;
+            var before = Elapsed;
             T result;
             if (handleExceptions)
             {
@@ -250,14 +303,14 @@ namespace Chronolap
                 }
                 finally
                 {
-                    var after = _stopwatch.Elapsed;
+                    var after = Elapsed;
                     RecordLap(lapName, after, after - before, "Measured Lap");
                 }
             }
             else
             {
                 result = await asyncFunc();
-                var after = _stopwatch.Elapsed;
+                var after = Elapsed;
                 RecordLap(lapName, after, after - before, "Measured Lap");
             }
             return result;
@@ -265,17 +318,21 @@ namespace Chronolap
 
         public void Lap(string name)
         {
-            TimeSpan now;
-            TimeSpan lastLapTimestamp;
-            
+            LapInfo lap;
             lock (_lockObject)
             {
-                now = _stopwatch.Elapsed;
-                lastLapTimestamp = _lastLapTimestamp;
+                var now = _stopwatch.Elapsed;
+                lap = new LapInfo
+                {
+                    Name = name,
+                    Duration = now - _lastLapTimestamp,
+                    Timestamp = now
+                };
+
+                AddLapInternal(lap);
             }
-            
-            var lapDuration = now - lastLapTimestamp;
-            RecordLap(name, now, lapDuration);
+
+            _logger?.LogInformation("Lap recorded: {LapName}, Duration: {Duration} ms", lap.Name, lap.Duration.TotalMilliseconds);
         }
 
         public void MeasureExecutionTime(Action action, string lapName)
@@ -385,6 +442,9 @@ namespace Chronolap
                         return durations[count / 2];
 
                 case LapStatisticsType.StandardDeviation:
+                    if (durations.Count == 1)
+                        return 0;
+
                     double avg = durations.Average();
                     double sumSquares = durations.Sum(d => Math.Pow(d - avg, 2));
                     return Math.Sqrt(sumSquares / (durations.Count - 1));
@@ -396,6 +456,9 @@ namespace Chronolap
                     return durations.Max();
 
                 case LapStatisticsType.Variance:
+                    if (durations.Count == 1)
+                        return 0;
+
                     avg = durations.Average();
                     sumSquares = durations.Sum(d => Math.Pow(d - avg, 2));
                     return sumSquares / (durations.Count - 1);
